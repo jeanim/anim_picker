@@ -10,6 +10,52 @@ from handlers import maya_handlers
 from handlers import file_handlers
 
 
+def get_nodes():
+    '''Return data nodes found in scene
+    '''
+    data_nodes = []
+    for maya_node in cmds.ls("*.{}".format(DataNode.__TAG__),
+                             o=True,
+                             r=True) or []:
+        data_node = DataNode(maya_node)
+        data_node.read_data()
+        data_nodes.append(data_node)
+
+    data_nodes.sort()
+    return data_nodes
+
+
+def get_node_for_object(item):
+    '''Will try to return related picker data_node for specified object
+    '''
+    namespaces = []
+
+    # No namespace case
+    if not cmds.referenceQuery(item, inr=True):
+        namespaces.append(":")
+
+    # Referenced node case
+    else:
+        prev_namespace = ":"
+        for namespace in item.split(":")[:-1]:
+            namespace = "{}{}:".format(prev_namespace, namespace)
+            namespaces.append(namespace)
+
+    # Parse namespaces
+    for namespace in namespaces:
+        for data_node in cmds.ls("{}*.{}".format(namespace, DataNode.__TAG__),
+                                 o=True) or []:
+            data_node = DataNode(data_node)
+            if data_node.countains(item.replace(namespace[1:], '')):
+                return data_node
+    return None
+
+
+# =============================================================================
+# classes
+# =============================================================================
+
+
 class DataNode():
     # Pipeline
     __NODE__ = "PICKER_DATAS"
@@ -95,7 +141,7 @@ class DataNode():
         # Add data file path attribute
         self._add_str_attr(node, self.__FILE_ATTR__)
 
-    #==========================================================================
+    # =========================================================================
     # Maya attributes
     def _get_attr(self, attr):
         '''Return node's attribute value
@@ -146,7 +192,7 @@ class DataNode():
         '''
         return self._get_attr(self.__FILE_ATTR__)
 
-    #===========================================================================
+    # ==========================================================================
     # Set attributes
     def get_data(self):
         return self.data
@@ -238,44 +284,3 @@ class DataNode():
         attrPlug = "{}.{}".format(self.name, self.__VERSION_ATTR__)
         cmds.setAttr(attrPlug, k=False, l=False)
         cmds.setAttr(attrPlug, unicode(version), l=True, type="string")
-
-
-def get_nodes():
-    '''Return data nodes found in scene
-    '''
-    data_nodes = []
-    for maya_node in cmds.ls("*.{}".format(DataNode.__TAG__),
-                             o=True,
-                             r=True) or []:
-        data_node = DataNode(maya_node)
-        data_node.read_data()
-        data_nodes.append(data_node)
-
-    data_nodes.sort()
-    return data_nodes
-
-
-def get_node_for_object(item):
-    '''Will try to return related picker data_node for specified object
-    '''
-    namespaces = []
-
-    # No namespace case
-    if not cmds.referenceQuery(item, inr=True):
-        namespaces.append(":")
-
-    # Referenced node case
-    else:
-        prev_namespace = ":"
-        for namespace in item.split(":")[:-1]:
-            namespace = "{}{}:".format(prev_namespace, namespace)
-            namespaces.append(namespace)
-
-    # Parse namespaces
-    for namespace in namespaces:
-        for data_node in cmds.ls("{}*.{}".format(namespace, DataNode.__TAG__),
-                                 o=True) or []:
-            data_node = DataNode(data_node)
-            if data_node.countains(item.replace(namespace[1:], '')):
-                return data_node
-    return None
